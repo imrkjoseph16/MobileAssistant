@@ -1,4 +1,4 @@
-package com.imrkjoseph.fibermobileassistant.app.common
+package com.imrkjoseph.fibermobileassistant.service
 
 import android.content.Context
 import android.content.SharedPreferences

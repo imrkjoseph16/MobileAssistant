@@ -4,27 +4,31 @@ import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.os.*
-import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.util.Log
-import com.imrkjoseph.fibermobileassistant.R
-import com.imrkjoseph.fibermobileassistant.activity.FacilityActivity
-import com.imrkjoseph.fibermobileassistant.app.Actions
-import com.imrkjoseph.fibermobileassistant.app.common.ServiceState
-import com.imrkjoseph.fibermobileassistant.app.common.Utils.Companion.getErrorText
-import com.imrkjoseph.fibermobileassistant.app.common.setServiceState
+import android.view.LayoutInflater
+import android.view.WindowManager
+import com.imrkjoseph.fibermobileassistant.app.Default.Companion.LOG_TAG
+import com.imrkjoseph.fibermobileassistant.app.common.callback.UtteranceProgressListener
+import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.getErrorText
+import com.imrkjoseph.fibermobileassistant.app.common.navigation.Actions
+import com.imrkjoseph.fibermobileassistant.app.common.notification.NotificationBuilder.Companion.setupNotification
+import com.imrkjoseph.fibermobileassistant.app.common.widget.FiberFloatingView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.*
 
-class FiberService : Service(), RecognitionListener, TextToSpeech.OnInitListener {
+class FiberService : Service(),
+    FiberFloatingView.FiberFloatingListener,
+    TextToSpeech.OnInitListener {
 
     private var wakeLock: PowerManager.WakeLock? = null
+
+    private var windowManager: WindowManager? = null
 
     private var isServiceStarted = false
 
@@ -34,6 +38,8 @@ class FiberService : Service(), RecognitionListener, TextToSpeech.OnInitListener
 
     private var recognizerIntent: Intent? = null
 
+    private val fiberListener by lazy { this }
+
     override fun onBind(p0: Intent?): IBinder? {
         return null
     }
@@ -41,8 +47,8 @@ class FiberService : Service(), RecognitionListener, TextToSpeech.OnInitListener
     override fun onCreate() {
         super.onCreate()
 
-        val notification = setupNotification()
-        startForeground(1, notification)
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        startForeground(1, setupNotification(this, notificationManager))
 
         //Text to Speech Recognizer
         setupTextToSpeech()
@@ -50,6 +56,9 @@ class FiberService : Service(), RecognitionListener, TextToSpeech.OnInitListener
         //Setup Speech Recognizer
         setupSpeechRecognizer()
         speech?.startListening(recognizerIntent)
+
+        //Setup Fiber Floating View
+        setupFiberView()
     }
 
     @SuppressLint("UnspecifiedImmutableFlag")
@@ -61,6 +70,18 @@ class FiberService : Service(), RecognitionListener, TextToSpeech.OnInitListener
             Actions.START.name -> stopService()
         }
         return START_STICKY
+    }
+
+    private fun setupFiberView() {
+        val inflater = getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        FiberFloatingView(
+            context = this,
+            inflater = inflater,
+            windowManager = windowManager,
+            speechRecognizer = speech,
+            fiberListener = fiberListener
+        )
     }
 
     private fun restartServiceIntent() {
@@ -103,53 +124,17 @@ class FiberService : Service(), RecognitionListener, TextToSpeech.OnInitListener
         setServiceState(this, ServiceState.STOPPED)
     }
 
-    private fun setupNotification(): Notification {
-        val notificationChannelId = "FIBER SERVICE CHANNEL"
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val channel = NotificationChannel(
-                notificationChannelId,
-                "Fiber service notifications channel",
-                NotificationManager.IMPORTANCE_HIGH
-            ).let {
-                it.description = "Fiber Service Channel"
-                it.enableLights(true)
-                it.lightColor = Color.RED
-                it.enableVibration(true)
-                it.vibrationPattern = longArrayOf(100, 200, 300, 400, 500, 400, 300, 200, 400)
-                it
-            }
-            notificationManager.createNotificationChannel(channel)
-        }
-
-        val pendingIntent: PendingIntent = Intent(this, 
-            FacilityActivity::class.java).let { notificationIntent ->
-            PendingIntent.getActivity(this, 0, notificationIntent, 0)
-        }
-
-        val builder: Notification.Builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-            Notification.Builder(this, notificationChannelId)
-        else Notification.Builder(this)
-
-        return builder
-            .setContentTitle("Fiber Mobile Assistant")
-            .setContentText("Please keep fiber running on background to continue listening...")
-            .setContentIntent(pendingIntent)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setTicker("Fiber Assistant")
-            .setPriority(Notification.PRIORITY_HIGH)
-            .build()
-    }
-
     private fun setupTextToSpeech() {
         textToSpeech = TextToSpeech(this, this, "com.google.android.tts")
+        textToSpeech?.setOnUtteranceProgressListener(
+            UtteranceProgressListener {
+            //Not yet implemented
+        })
         textToSpeech?.language = Locale.UK
     }
 
     private fun setupSpeechRecognizer() {
         speech = SpeechRecognizer.createSpeechRecognizer(this)
-        speech?.setRecognitionListener(this)
         recognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
         recognizerIntent!!.putExtra(
             RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
@@ -161,24 +146,25 @@ class FiberService : Service(), RecognitionListener, TextToSpeech.OnInitListener
         )
     }
 
+    //Text To Speech Initializer
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             val result: Int? = textToSpeech?.setLanguage(Locale.UK)
             if (result == TextToSpeech.LANG_MISSING_DATA ||
                 result == TextToSpeech.LANG_NOT_SUPPORTED
             ) {
-                Log.e("error", "This Language is not supported")
+                Log.e(LOG_TAG, "OnError: This Language is not supported")
             }
         }
     }
 
-    //Speech Recognizer Listeners
-    override fun onResults(results: Bundle?) {
-        val matches: ArrayList<String>? = results?.getStringArrayList(
+    //Speech Recognizer Listener
+    override fun onResults(results: Bundle) {
+        val matches: ArrayList<String>? = results.getStringArrayList(
             SpeechRecognizer.RESULTS_RECOGNITION
         )
 
-        Log.d("Fiber", "OnResult: $matches")
+        Log.d(LOG_TAG, "OnResult: $matches")
 
         GlobalScope.launch(Dispatchers.Main) {
             if (matches?.toString()?.toLowerCase()?.contains("fiber") == true
@@ -192,21 +178,7 @@ class FiberService : Service(), RecognitionListener, TextToSpeech.OnInitListener
 
     override fun onError(errorCode: Int) {
         val errorMessage: String = getErrorText(errorCode)
-        Log.d("Fiber", "Error: $errorMessage")
+        Log.d(LOG_TAG, "OnError: $errorMessage")
         speech?.startListening(recognizerIntent)
     }
-
-    override fun onPartialResults(results: Bundle?) {}
-
-    override fun onEvent(p0: Int, p1: Bundle?) {}
-
-    override fun onReadyForSpeech(p0: Bundle?) {}
-
-    override fun onBeginningOfSpeech() {}
-
-    override fun onRmsChanged(p0: Float) {}
-
-    override fun onBufferReceived(p0: ByteArray?) {}
-
-    override fun onEndOfSpeech() {}
 }

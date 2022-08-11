@@ -1,10 +1,11 @@
-package com.imrkjoseph.fibermobileassistant.app.common
+package com.imrkjoseph.fibermobileassistant.app.common.helper
 
+import android.content.Context
+import android.provider.Settings
 import android.speech.SpeechRecognizer
 
 class Utils {
     companion object {
-        const val PERMISSIONS_RECORD_AUDIO = 1
 
         fun getErrorText(errorCode: Int): String {
             val message: String = when (errorCode) {
@@ -20,6 +21,19 @@ class Utils {
                 else -> "Didn't understand, please try again."
             }
             return message
+        }
+
+        fun adjustBrightness(brightness: Float, context: Context) : Boolean {
+            return try {
+                Settings.System.putInt(
+                    context.contentResolver,
+                    Settings.System.SCREEN_BRIGHTNESS,
+                    brightness.toInt()
+                )
+                true
+            } catch (e: Exception) {
+                false
+            }
         }
     }
 }

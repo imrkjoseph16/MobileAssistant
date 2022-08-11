@@ -4,9 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import com.imrkjoseph.fibermobileassistant.app.Actions
-import com.imrkjoseph.fibermobileassistant.app.common.ServiceState
-import com.imrkjoseph.fibermobileassistant.app.common.getServiceState
+import com.imrkjoseph.fibermobileassistant.app.common.navigation.Actions
 
 class FiberReceiver : BroadcastReceiver() {
 
