@@ -10,6 +10,7 @@ import android.view.*
 import com.github.zagum.speechrecognitionview.adapters.RecognitionListenerAdapter
 import com.imrkjoseph.fibermobileassistant.app.Default.Companion.getRecognitionColor
 import com.imrkjoseph.fibermobileassistant.app.Default.Companion.heightList
+import com.imrkjoseph.fibermobileassistant.app.common.callback.FiberTouchListener
 import com.imrkjoseph.fibermobileassistant.databinding.WidgetFiberViewBinding
 
 class FiberFloatingView(
@@ -18,7 +19,7 @@ class FiberFloatingView(
     var windowManager: WindowManager? = null,
     var speechRecognizer: SpeechRecognizer? = null,
     var fiberListener: FiberFloatingListener
-): RecognitionListenerAdapter() {
+): RecognitionListenerAdapter(), FiberTouchListener.TouchListener {
 
     private val fiberView: WidgetFiberViewBinding by lazy {
          WidgetFiberViewBinding.inflate(inflater)
@@ -79,47 +80,18 @@ class FiberFloatingView(
     @SuppressLint("ClickableViewAccessibility")
     private fun setupViewListener() {
         fiberView.apply {
-            recognitionView.setOnTouchListener(object : View.OnTouchListener {
-
-                private var lastAction = 0
-                private var initialX = 0
-                private var initialY = 0
-                private var initialTouchX = 0f
-                private var initialTouchY = 0f
-
-                override fun onTouch(v: View?, event: MotionEvent): Boolean {
-                    when (event.action) {
-                        MotionEvent.ACTION_DOWN -> {
-
-                            //Remember the initial position.
-                            initialX = params?.x!!
-                            initialY = params?.y!!
-
-                            //Get the touch location
-                            initialTouchX = event.rawX
-                            initialTouchY = event.rawY
-                            lastAction = event.action
-                            return true
-                        }
-                        MotionEvent.ACTION_UP -> {
-                            lastAction = event.action
-                            return true
-                        }
-                        MotionEvent.ACTION_MOVE -> {
-                            //Calculate the X and Y coordinates of the view.
-                            params?.x = initialX + (event.rawX - initialTouchX).toInt()
-                            params?.y = initialY + (event.rawY - initialTouchY).toInt()
-
-                            //Update the layout with new X & Y coordinate
-                            windowManager?.updateViewLayout(fiberView.root, params)
-                            lastAction = event.action
-                            return true
-                        }
-                    }
-                    return false
-                }
-            })
+            recognitionView.setOnTouchListener(FiberTouchListener(
+                touchListener = this@FiberFloatingView
+            ))
         }
+    }
+
+    override fun onReadyForSpeech(params: Bundle?) {
+        fiberListener.onBeginReadySpeech()
+    }
+
+    override fun onBeginningOfSpeech() {
+        fiberListener.onBeginReadySpeech()
     }
 
     override fun onResults(results: Bundle) {
@@ -130,8 +102,33 @@ class FiberFloatingView(
         fiberListener.onError(error)
     }
 
+    override fun onEndOfSpeech() {
+        fiberListener.onEndOfSpeech()
+    }
+
+    //Fiber Touch Listener
+    override fun onActionDown(onXParam: (xParam: Int, yParam: Int) -> Unit) {
+        onXParam.invoke(params?.x!!, params?.y!!)
+    }
+
+    override fun onActionUp() {
+        fiberListener.onFiberClicked()
+    }
+
+    override fun onActionMove(initialX: Int, initialY: Int) {
+        //Calculate the X and Y coordinates of the view.
+        params?.x = initialX
+        params?.y = initialY
+
+        //Update the layout with new X & Y coordinate
+        windowManager?.updateViewLayout(fiberView.root, params)
+    }
+
     interface FiberFloatingListener {
+        fun onBeginReadySpeech()
         fun onError(errorCode: Int)
         fun onResults(results: Bundle)
+        fun onFiberClicked()
+        fun onEndOfSpeech()
     }
 }

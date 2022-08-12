@@ -13,11 +13,11 @@ import androidx.core.content.ContextCompat
 import com.imrkjoseph.fibermobileassistant.app.Default.Companion.PERMISSIONS_RECORD_AUDIO
 import com.imrkjoseph.fibermobileassistant.app.Default.Companion.PERMISSION_DRAW_OVER_OVERLAY
 import com.imrkjoseph.fibermobileassistant.app.base.BaseActivity
+import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.getServiceState
 import com.imrkjoseph.fibermobileassistant.app.common.navigation.Actions
 import com.imrkjoseph.fibermobileassistant.databinding.ActivityFacilityBinding
 import com.imrkjoseph.fibermobileassistant.service.FiberService
-import com.imrkjoseph.fibermobileassistant.service.ServiceState
-import com.imrkjoseph.fibermobileassistant.service.getServiceState
+import com.imrkjoseph.fibermobileassistant.service.ServiceEnum
 
 class FacilityActivity : BaseActivity<ActivityFacilityBinding>() {
 
@@ -52,7 +52,7 @@ class FacilityActivity : BaseActivity<ActivityFacilityBinding>() {
     }
 
     private fun setupService(action: Actions) {
-        if (getServiceState(this) == ServiceState.STOPPED && action == Actions.STOP) return
+        if (getServiceState(this) == ServiceEnum.STOPPED && action == Actions.STOP) return
         Intent(this, FiberService::class.java).also {
             it.action = action.name
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

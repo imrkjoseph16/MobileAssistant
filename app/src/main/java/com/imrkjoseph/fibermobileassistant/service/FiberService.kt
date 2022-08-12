@@ -11,9 +11,13 @@ import android.speech.tts.TextToSpeech
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.WindowManager
+import com.imrkjoseph.fibermobileassistant.app.Default.Companion.HOUR_TO_MILLIS
 import com.imrkjoseph.fibermobileassistant.app.Default.Companion.LOG_TAG
 import com.imrkjoseph.fibermobileassistant.app.common.callback.UtteranceProgressListener
+import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.adjustBrightness
 import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.getErrorText
+import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.readCommandList
+import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.setServiceState
 import com.imrkjoseph.fibermobileassistant.app.common.navigation.Actions
 import com.imrkjoseph.fibermobileassistant.app.common.notification.NotificationBuilder.Companion.setupNotification
 import com.imrkjoseph.fibermobileassistant.app.common.widget.FiberFloatingView
@@ -22,7 +26,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.*
 
-class FiberService : Service(),
+class FiberService : ServiceViewModel(),
     FiberFloatingView.FiberFloatingListener,
     TextToSpeech.OnInitListener {
 
@@ -32,6 +36,8 @@ class FiberService : Service(),
 
     private var isServiceStarted = false
 
+    private var isRecording = false
+
     private var textToSpeech: TextToSpeech? = null
 
     private var speech: SpeechRecognizer? = null
@@ -39,10 +45,6 @@ class FiberService : Service(),
     private var recognizerIntent: Intent? = null
 
     private val fiberListener by lazy { this }
-
-    override fun onBind(p0: Intent?): IBinder? {
-        return null
-    }
 
     override fun onCreate() {
         super.onCreate()
@@ -55,10 +57,43 @@ class FiberService : Service(),
 
         //Setup Speech Recognizer
         setupSpeechRecognizer()
-        speech?.startListening(recognizerIntent)
+        executeListening()
 
         //Setup Fiber Floating View
         setupFiberView()
+
+        //Checking every 1 hour if the speech listener
+        //has being running or stopped.
+        checkSpeechTimer()
+
+        //ViewModel Observer
+        executeObserver()
+    }
+
+    private fun executeObserver() {
+        onServiceState = {
+            when(it) {
+                is ExecuteSpeak -> executeSpeaking(word = it.executeSpeak)
+                is ExecuteBrightness -> {
+                    adjustBrightness(
+                        brightness = it.brightness,
+                        context = this
+                    )
+                }
+            }
+        }
+    }
+
+    fun checkSpeechTimer() {
+        val timer = object: CountDownTimer(HOUR_TO_MILLIS, 1000) {
+            override fun onTick(millisUntilFinished: Long) {}
+            override fun onFinish() {
+                checkSpeechTimer()
+
+                if (!isRecording) executeListening()
+            }
+        }
+        timer.start()
     }
 
     @SuppressLint("UnspecifiedImmutableFlag")
@@ -67,7 +102,7 @@ class FiberService : Service(),
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent != null) when(intent.action) {
             Actions.START.name -> startService()
-            Actions.START.name -> stopService()
+            Actions.STOP.name -> stopService()
         }
         return START_STICKY
     }
@@ -100,7 +135,7 @@ class FiberService : Service(),
     private fun startService() {
         if (isServiceStarted) return
         isServiceStarted = true
-        setServiceState(this, ServiceState.STARTED)
+        setServiceState(this, ServiceEnum.STARTED)
 
         wakeLock =
             (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
@@ -121,7 +156,7 @@ class FiberService : Service(),
         } catch (e: Exception) { }
 
         isServiceStarted = false
-        setServiceState(this, ServiceState.STOPPED)
+        setServiceState(this, ServiceEnum.STOPPED)
     }
 
     private fun setupTextToSpeech() {
@@ -131,6 +166,10 @@ class FiberService : Service(),
             //Not yet implemented
         })
         textToSpeech?.language = Locale.UK
+    }
+
+    private fun executeSpeaking(word: String) {
+        textToSpeech?.speak(word, TextToSpeech.QUEUE_ADD, null)
     }
 
     private fun setupSpeechRecognizer() {
@@ -144,6 +183,10 @@ class FiberService : Service(),
             RecognizerIntent.EXTRA_LANGUAGE_MODEL,
             RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
         )
+    }
+
+    private fun executeListening() {
+        speech?.startListening(recognizerIntent)
     }
 
     //Text To Speech Initializer
@@ -167,18 +210,28 @@ class FiberService : Service(),
         Log.d(LOG_TAG, "OnResult: $matches")
 
         GlobalScope.launch(Dispatchers.Main) {
-            if (matches?.toString()?.toLowerCase()?.contains("fiber") == true
-                || matches?.toString()?.toLowerCase()?.contains("viber") == true) {
-                textToSpeech?.speak(matches[0], TextToSpeech.QUEUE_ADD, null)
-            }
+            getCommandFunction(readCommandList(matches.toString()))
         }
 
-        speech?.startListening(recognizerIntent)
+        executeListening()
+    }
+
+    override fun onBeginReadySpeech() {
+        isRecording = true
     }
 
     override fun onError(errorCode: Int) {
         val errorMessage: String = getErrorText(errorCode)
         Log.d(LOG_TAG, "OnError: $errorMessage")
-        speech?.startListening(recognizerIntent)
+        isRecording = false
+        executeListening()
+    }
+
+    override fun onFiberClicked() {
+        executeListening()
+    }
+
+    override fun onEndOfSpeech() {
+        isRecording = false
     }
 }
