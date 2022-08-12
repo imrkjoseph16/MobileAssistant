@@ -8,7 +8,11 @@ enum class ServiceEnum {
 sealed class ServiceState
 
 data class ExecuteSpeak(
-    var executeSpeak: String
+    var wordSpeak: String
+) : ServiceState()
+
+data class GetCurrentDateTime(
+    var value: String
 ) : ServiceState()
 
 data class ExecuteBrightness(

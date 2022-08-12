@@ -4,10 +4,14 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.provider.Settings
 import android.speech.SpeechRecognizer
+import com.imrkjoseph.fibermobileassistant.app.Default.Companion.ERROR_WORD
 import com.imrkjoseph.fibermobileassistant.app.Default.Companion.commandList
 import com.imrkjoseph.fibermobileassistant.app.Default.Companion.key
 import com.imrkjoseph.fibermobileassistant.app.Default.Companion.name
 import com.imrkjoseph.fibermobileassistant.service.ServiceEnum
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+import java.util.*
 
 class Utils {
     companion object {
@@ -65,6 +69,18 @@ class Utils {
             } catch (e: Exception) {
                 false
             }
+        }
+
+        fun getCurrentDateTime(type: String): String {
+            var dateFormat: DateFormat? = null
+
+            when(type) {
+                "time" -> dateFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+                "date" -> dateFormat = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
+                "dateTime" -> dateFormat = SimpleDateFormat("MM/dd/yyyy, h:mm a", Locale.getDefault())
+            }
+
+            return dateFormat?.format(Date()) ?: ERROR_WORD
         }
     }
 }

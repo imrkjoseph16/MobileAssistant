@@ -15,6 +15,7 @@ import com.imrkjoseph.fibermobileassistant.app.Default.Companion.HOUR_TO_MILLIS
 import com.imrkjoseph.fibermobileassistant.app.Default.Companion.LOG_TAG
 import com.imrkjoseph.fibermobileassistant.app.common.callback.UtteranceProgressListener
 import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.adjustBrightness
+import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.getCurrentDateTime
 import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.getErrorText
 import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.readCommandList
 import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.setServiceState
@@ -36,7 +37,7 @@ class FiberService : ServiceViewModel(),
 
     private var isServiceStarted = false
 
-    private var isRecording = false
+    private var isListening = false
 
     private var textToSpeech: TextToSpeech? = null
 
@@ -73,7 +74,10 @@ class FiberService : ServiceViewModel(),
     private fun executeObserver() {
         onServiceState = {
             when(it) {
-                is ExecuteSpeak -> executeSpeaking(word = it.executeSpeak)
+                is ExecuteSpeak -> executeSpeaking(word = it.wordSpeak)
+                is GetCurrentDateTime -> executeSpeaking(
+                    word = getCurrentDateTime(it.value)
+                )
                 is ExecuteBrightness -> {
                     adjustBrightness(
                         brightness = it.brightness,
@@ -90,7 +94,7 @@ class FiberService : ServiceViewModel(),
             override fun onFinish() {
                 checkSpeechTimer()
 
-                if (!isRecording) executeListening()
+                if (!isListening) executeListening()
             }
         }
         timer.start()
@@ -217,13 +221,13 @@ class FiberService : ServiceViewModel(),
     }
 
     override fun onBeginReadySpeech() {
-        isRecording = true
+        isListening = true
     }
 
     override fun onError(errorCode: Int) {
         val errorMessage: String = getErrorText(errorCode)
         Log.d(LOG_TAG, "OnError: $errorMessage")
-        isRecording = false
+        isListening = false
         executeListening()
     }
 
@@ -232,6 +236,6 @@ class FiberService : ServiceViewModel(),
     }
 
     override fun onEndOfSpeech() {
-        isRecording = false
+        isListening = false
     }
 }

@@ -17,8 +17,11 @@ open class ServiceViewModel : Service() {
             val speakWord = function.split(":")
             val commands = mutableMapOf(
                 "executeSpeaking" to Runnable {
-                    onServiceState.invoke(ExecuteSpeak(executeSpeak = speakWord[1])
+                    onServiceState.invoke(ExecuteSpeak(wordSpeak = speakWord[1])
                 ) },
+                "getCurrentDateTime" to Runnable {
+                    onServiceState.invoke(GetCurrentDateTime(value = speakWord[1]))
+                },
                 "adjustBrightness" to Runnable {
                     onServiceState.invoke(ExecuteBrightness(brightness = 20F))
                 }
