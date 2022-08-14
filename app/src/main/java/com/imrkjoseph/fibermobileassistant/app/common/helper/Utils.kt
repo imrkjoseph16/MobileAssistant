@@ -2,19 +2,34 @@ package com.imrkjoseph.fibermobileassistant.app.common.helper
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.CountDownTimer
 import android.provider.Settings
 import android.speech.SpeechRecognizer
-import com.imrkjoseph.fibermobileassistant.app.Default.Companion.ERROR_WORD
-import com.imrkjoseph.fibermobileassistant.app.Default.Companion.commandList
-import com.imrkjoseph.fibermobileassistant.app.Default.Companion.key
-import com.imrkjoseph.fibermobileassistant.app.Default.Companion.name
+import com.imrkjoseph.fibermobileassistant.app.common.Default.Companion.COUNTDOWN_INTERVAL
+import com.imrkjoseph.fibermobileassistant.app.common.Default.Companion.DELAY_SECONDS
+import com.imrkjoseph.fibermobileassistant.app.common.Default.Companion.ERROR_WORD
+import com.imrkjoseph.fibermobileassistant.app.common.Default.Companion.key
+import com.imrkjoseph.fibermobileassistant.app.common.Default.Companion.name
 import com.imrkjoseph.fibermobileassistant.service.ServiceEnum
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.coroutines.CoroutineContext
+
 
 class Utils {
     companion object {
+
+        fun setCoroutine(dispatcher: CoroutineDispatcher): CoroutineScope {
+            val job = Job()
+            return object : CoroutineScope {
+                override val coroutineContext: CoroutineContext
+                    get() = job + dispatcher
+            }
+        }
 
         fun setServiceState(context: Context, state: ServiceEnum) {
             val sharedPrefs = getPreferences(context)
@@ -34,6 +49,15 @@ class Utils {
             return context.getSharedPreferences(name, 0)
         }
 
+        fun executeDelay(executeDelay: (
+            timer: Boolean
+        ) -> Unit) {
+            object : CountDownTimer(DELAY_SECONDS, COUNTDOWN_INTERVAL) {
+                override fun onFinish() = executeDelay.invoke(true)
+                override fun onTick(millisUntilFinished: Long) = executeDelay.invoke(false)
+            }.start()
+        }
+
         fun getErrorText(errorCode: Int): String {
             val message: String = when (errorCode) {
                 SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
@@ -48,14 +72,6 @@ class Utils {
                 else -> "Didn't understand, please try again."
             }
             return message
-        }
-
-        fun readCommandList(word: String) : String {
-            var function = ""
-            commandList.forEach {
-                if (word.contains(it.key)) function = it.value
-            }
-            return function
         }
 
         fun adjustBrightness(brightness: Float, context: Context) : Boolean {

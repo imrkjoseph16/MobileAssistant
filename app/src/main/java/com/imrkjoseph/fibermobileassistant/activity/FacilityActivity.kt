@@ -10,8 +10,8 @@ import android.view.LayoutInflater
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.imrkjoseph.fibermobileassistant.app.Default.Companion.PERMISSIONS_RECORD_AUDIO
-import com.imrkjoseph.fibermobileassistant.app.Default.Companion.PERMISSION_DRAW_OVER_OVERLAY
+import com.imrkjoseph.fibermobileassistant.app.common.Default.Companion.PERMISSIONS_RECORD_AUDIO
+import com.imrkjoseph.fibermobileassistant.app.common.Default.Companion.PERMISSION_DRAW_OVER_OVERLAY
 import com.imrkjoseph.fibermobileassistant.app.base.BaseActivity
 import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.getServiceState
 import com.imrkjoseph.fibermobileassistant.app.common.navigation.Actions
@@ -27,7 +27,6 @@ class FacilityActivity : BaseActivity<ActivityFacilityBinding>() {
     override fun onViewsBound() {
         super.onViewsBound()
         checkPermission()
-        setupService(Actions.START)
     }
 
     private fun checkPermission() {
@@ -37,18 +36,21 @@ class FacilityActivity : BaseActivity<ActivityFacilityBinding>() {
             ActivityCompat.requestPermissions(
                 this, arrayOf(Manifest.permission.RECORD_AUDIO),
                 PERMISSIONS_RECORD_AUDIO)
-            return
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-
-            //If the draw over permission is not available open the settings screen
-            //to grant the permission.
-            val intent = Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName")
-            )
-            startActivityForResult(intent, PERMISSION_DRAW_OVER_OVERLAY)
-            return
+            openOverlayPermission()
+        } else {
+            setupService(Actions.START)
         }
+    }
+
+    private fun openOverlayPermission(){
+        //If the draw over permission is not available open the settings screen
+        //to grant the permission.
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:$packageName")
+        )
+        startActivityForResult(intent, PERMISSION_DRAW_OVER_OVERLAY)
     }
 
     private fun setupService(action: Actions) {
@@ -77,6 +79,8 @@ class FacilityActivity : BaseActivity<ActivityFacilityBinding>() {
                 && Settings.canDrawOverlays(this)
             ) {
                 setupService(Actions.START)
+            } else if (!Settings.canDrawOverlays(this)) {
+                openOverlayPermission()
             } else {
                 finish()
             }

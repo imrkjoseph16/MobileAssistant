@@ -8,8 +8,8 @@ import android.os.Bundle
 import android.speech.SpeechRecognizer
 import android.view.*
 import com.github.zagum.speechrecognitionview.adapters.RecognitionListenerAdapter
-import com.imrkjoseph.fibermobileassistant.app.Default.Companion.getRecognitionColor
-import com.imrkjoseph.fibermobileassistant.app.Default.Companion.heightList
+import com.imrkjoseph.fibermobileassistant.app.common.Default.Companion.getRecognitionColor
+import com.imrkjoseph.fibermobileassistant.app.common.Default.Companion.heightList
 import com.imrkjoseph.fibermobileassistant.app.common.callback.FiberTouchListener
 import com.imrkjoseph.fibermobileassistant.databinding.WidgetFiberViewBinding
 

@@ -11,19 +11,23 @@ import android.speech.tts.TextToSpeech
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.WindowManager
-import com.imrkjoseph.fibermobileassistant.app.Default.Companion.HOUR_TO_MILLIS
-import com.imrkjoseph.fibermobileassistant.app.Default.Companion.LOG_TAG
+import com.imrkjoseph.fibermobileassistant.app.common.Default.Companion.COUNTDOWN_INTERVAL
+import com.imrkjoseph.fibermobileassistant.app.common.Default.Companion.DB_TYPE_QUESTION
+import com.imrkjoseph.fibermobileassistant.app.common.Default.Companion.ECHO_NAME
+import com.imrkjoseph.fibermobileassistant.app.common.Default.Companion.HOUR_TO_MILLIS
+import com.imrkjoseph.fibermobileassistant.app.common.Default.Companion.LOG_TAG
 import com.imrkjoseph.fibermobileassistant.app.common.callback.UtteranceProgressListener
 import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.adjustBrightness
+import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.executeDelay
 import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.getCurrentDateTime
 import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.getErrorText
-import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.readCommandList
+import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.setCoroutine
 import com.imrkjoseph.fibermobileassistant.app.common.helper.Utils.Companion.setServiceState
 import com.imrkjoseph.fibermobileassistant.app.common.navigation.Actions
 import com.imrkjoseph.fibermobileassistant.app.common.notification.NotificationBuilder.Companion.setupNotification
 import com.imrkjoseph.fibermobileassistant.app.common.widget.FiberFloatingView
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -35,10 +39,6 @@ class FiberService : ServiceViewModel(),
 
     private var windowManager: WindowManager? = null
 
-    private var isServiceStarted = false
-
-    private var isListening = false
-
     private var textToSpeech: TextToSpeech? = null
 
     private var speech: SpeechRecognizer? = null
@@ -46,6 +46,12 @@ class FiberService : ServiceViewModel(),
     private var recognizerIntent: Intent? = null
 
     private val fiberListener by lazy { this }
+
+    private var isServiceStarted = false
+
+    private var isListening = false
+
+    private var commandRecentType = ""
 
     override fun onCreate() {
         super.onCreate()
@@ -89,7 +95,7 @@ class FiberService : ServiceViewModel(),
     }
 
     fun checkSpeechTimer() {
-        val timer = object: CountDownTimer(HOUR_TO_MILLIS, 1000) {
+        val timer = object: CountDownTimer(HOUR_TO_MILLIS, COUNTDOWN_INTERVAL) {
             override fun onTick(millisUntilFinished: Long) {}
             override fun onFinish() {
                 checkSpeechTimer()
@@ -213,11 +219,44 @@ class FiberService : ServiceViewModel(),
 
         Log.d(LOG_TAG, "OnResult: $matches")
 
-        GlobalScope.launch(Dispatchers.Main) {
-            getCommandFunction(readCommandList(matches.toString()))
-        }
+        //Handling the onResult data from recognizer.
+        handleResultState(matches)
 
+        //Listen again after result handling.
         executeListening()
+    }
+
+    private fun handleResultState(
+        matches: ArrayList<String>?
+    ) {
+        setCoroutine(Main).launch {
+            //Check the commandRecentType if equals to question,
+            //It means echo needs to interact again to the user.
+            val userInteract = commandRecentType == DB_TYPE_QUESTION
+
+            if (matches.toString().contains(ECHO_NAME) ||
+                userInteract
+            ) {
+                launch(IO) {
+                    val commandForm = readCommandList(matches)
+
+                    getCommandFunction(commandForm.output.toString())
+                    commandRecentType = commandForm.type.toString()
+                }
+            }
+
+            //Reset commandRecentType after 4 seconds,
+            //If the user are not responding.
+            resetInteraction(userInteract)
+        }
+    }
+
+    private fun resetInteraction(
+        userInteract: Boolean
+    ) {
+        if (userInteract) {
+            executeDelay { commandRecentType = "" }
+        }
     }
 
     override fun onBeginReadySpeech() {

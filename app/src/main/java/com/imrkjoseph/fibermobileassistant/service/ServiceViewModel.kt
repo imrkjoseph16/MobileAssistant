@@ -3,10 +3,20 @@ package com.imrkjoseph.fibermobileassistant.service
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
+import android.util.Log
+import com.imrkjoseph.fibermobileassistant.app.di.data.form.CommandForm
+import com.imrkjoseph.fibermobileassistant.app.di.data.gateway.repository.CommandRepository
+import dagger.hilt.android.AndroidEntryPoint
+import java.util.ArrayList
+import javax.inject.Inject
 
+@AndroidEntryPoint
 open class ServiceViewModel : Service() {
 
     lateinit var onServiceState: (result: ServiceState) -> Unit
+
+    @Inject
+    lateinit var commandRepository: CommandRepository
 
     override fun onBind(p0: Intent?): IBinder? {
         return null
@@ -26,7 +36,7 @@ open class ServiceViewModel : Service() {
                     onServiceState.invoke(ExecuteBrightness(brightness = 20F))
                 }
             )
-            //Check if the function has ":"
+            //Check if the function contains (":")
             //it means execute speak method.
             commands[if (function.contains(":")) {
                 speakWord[0]
@@ -34,5 +44,16 @@ open class ServiceViewModel : Service() {
                 function
             }]?.run()
         } catch (e: Exception) { }
+    }
+
+    fun readCommandList(words: ArrayList<String>?) : CommandForm {
+        var function = CommandForm()
+
+        commandRepository.getCommandList().forEach {
+            if (words.toString().contains(it.input.toString())) {
+                function = it
+            }
+        }
+        return function
     }
 }

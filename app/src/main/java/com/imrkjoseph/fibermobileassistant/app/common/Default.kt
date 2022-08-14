@@ -1,4 +1,4 @@
-package com.imrkjoseph.fibermobileassistant.app
+package com.imrkjoseph.fibermobileassistant.app.common
 
 import android.content.Context
 import androidx.core.content.ContextCompat
@@ -7,28 +7,28 @@ import com.imrkjoseph.fibermobileassistant.R
 class Default {
 
     companion object {
-        const val PERMISSIONS_RECORD_AUDIO = 1
-        const val PERMISSION_DRAW_OVER_OVERLAY = 2
-        const val HOUR_TO_MILLIS = 3600000L
+        const val ECHO_NAME = "echo"
         const val ERROR_WORD = "Something is wrong, Please try again"
         const val LOG_TAG = "FIBER"
-
-        const val TYPE_TIME = "time"
-        const val TYPE_DATE = "date"
-        const val TYPE_DATETIME = "dateTime"
 
         const val name = "SERVICE_KEY"
         const val key = "SERVICE_STATE"
 
-        val heightList = intArrayOf(22, 26, 20, 25, 18)
+        //Command Database Variables
+        const val DB_COMMANDS = "EchoCommands"
+        const val DB_COMMAND_PATH = "commandlist.db"
+        const val DB_INPUT = "input"
+        const val DB_OUTPUT = "output"
+        const val DB_TYPE = "type"
+        const val DB_TYPE_QUESTION = "question"
 
-        val commandList = hashMapOf(
-            "hello" to "executeSpeaking:Hi, How are you?",
-            "time" to "getCurrentDateTime:$TYPE_TIME",
-            "date" to "getCurrentDateTime:$TYPE_DATE",
-            "date and time" to "getCurrentDateTime:$TYPE_DATETIME",
-            "adjust brightness" to "adjustBrightness"
-        )
+        const val PERMISSIONS_RECORD_AUDIO = 1
+        const val PERMISSION_DRAW_OVER_OVERLAY = 2
+        const val COUNTDOWN_INTERVAL = 1000L
+        const val HOUR_TO_MILLIS = 3600000L
+        const val DELAY_SECONDS = 4000L
+
+        val heightList = intArrayOf(22, 26, 20, 25, 18)
 
         fun getRecognitionColor(context: Context): IntArray {
             return intArrayOf(
