@@ -1,3 +1,9 @@
 <resources>
-    <string name="app_name">FiberMobileAssistant</string>
+    <string name="app_name">Echo Mobile Assistant</string>
+
+    <string name="param_speak_message">
+        <![CDATA[
+        %1$s %2$s, Would you like me to read the message?.
+        ]]>
+        </string>
 </resources>
