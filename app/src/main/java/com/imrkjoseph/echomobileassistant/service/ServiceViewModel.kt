@@ -19,6 +19,8 @@ import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.PHONE_STA
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.PH_FIRST_NUMBER_FORMAT
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.PH_NUMBER_FORMAT
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.SMS_RECEIVED
+import com.imrkjoseph.echomobileassistant.app.common.data.NotificationForm
+import com.imrkjoseph.echomobileassistant.app.common.data.SmsStateForm
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.formatString
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.wakeupScreen
 import com.imrkjoseph.echomobileassistant.app.common.service.SmsStateService
@@ -63,6 +65,9 @@ open class ServiceViewModel : Service() {
                 },
                 "adjustBrightness" to Runnable {
                     onServiceState.invoke(ExecuteBrightness(brightness = 20F))
+                },
+                "readNotification" to Runnable {
+                    onServiceState.invoke(ReadNotification)
                 }
             )
             //Check if the function contains (":")
@@ -88,13 +93,13 @@ open class ServiceViewModel : Service() {
 
     fun handlingSmsState(
         context: Context,
-        senderName: String?
+        smsForm: SmsStateForm?
     ) {
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeupScreen(powerManager)
 
-        var contactName = senderName.toString()
-        var phoneName = ""
+        var contactName = smsForm?.senderName.toString()
+        val smsType: String?
 
         if (contactName.substring(0, 3).contains(PH_NUMBER_FORMAT)) {
             contactName = contactName.replace(PH_NUMBER_FORMAT, "0")
@@ -112,38 +117,31 @@ open class ServiceViewModel : Service() {
         if (contactName.substring(0, 2) == PH_FIRST_NUMBER_FORMAT) {
             if (cursor!!.count > 0) {
                 while (cursor.moveToNext()) {
-                    phoneName = cursor.getString(cursor.getColumnIndex(
+                    contactName = cursor.getString(cursor.getColumnIndex(
                             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
                         )
                     )
                 }
                 cursor.close()
-
-                onServiceState.invoke(ExecuteSpeak(
-                    wordSpeak = formatString(
-                        context,
-                        INCOMING_SMS,
-                        phoneName
-                    )
-                ))
+                smsType = INCOMING_SMS
             } else {
-                onServiceState.invoke(ExecuteSpeak(
-                    wordSpeak = formatString(
-                        context,
-                        INCOMING_UNKNOWN_SMS,
-                        contactName
-                    )
-                ))
+                smsType = INCOMING_UNKNOWN_SMS
             }
         } else {
-            onServiceState.invoke(ExecuteSpeak(
-                wordSpeak = formatString(
-                    context,
-                    INCOMING_NEW_SMS,
-                    contactName
-                )
-            ))
+            smsType = INCOMING_NEW_SMS
         }
+
+        onServiceState.invoke(HandleNotification(
+            notificationForm = NotificationForm(
+                packageName = smsForm?.senderName,
+                title = formatString(
+                    context,
+                    smsType,
+                    contactName
+                ),
+                description = smsForm?.smsMessage
+            )
+        ))
     }
 
     fun handlingCallState(

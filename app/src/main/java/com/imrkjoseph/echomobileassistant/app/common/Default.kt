@@ -10,6 +10,7 @@ class Default {
     companion object {
         const val LOG_TAG = "ECHO"
         const val ECHO_NAME = "echo"
+        const val TEXT_TO_SPEECH_ID = "UniqueID"
         const val ERROR_WORD = "Something is wrong, Please try again"
         const val NOTIFICATION_WORD = "You have a new notification from"
         const val INCOMING_CALL_WORD = "You have an incoming call from"
@@ -41,7 +42,7 @@ class Default {
         const val PERMISSION_DRAW_OVER_OVERLAY = 2
         const val COUNTDOWN_INTERVAL = 1000L
         const val HOUR_TO_MILLIS = 3600000L
-        const val DELAY_SECONDS = 4000L
+        const val DELAY_SECONDS = 5000L
 
         val heightList = intArrayOf(22, 26, 20, 25, 18)
 

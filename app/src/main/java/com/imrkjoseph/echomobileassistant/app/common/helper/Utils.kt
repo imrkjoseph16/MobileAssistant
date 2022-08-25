@@ -53,12 +53,12 @@ class Utils {
             return context.getSharedPreferences(name, 0)
         }
 
-        fun executeDelay(executeDelay: (
+        fun executeDelay(delay: Long, executeDelay: (
             timer: Boolean
         ) -> Unit) {
-            object : CountDownTimer(DELAY_SECONDS, COUNTDOWN_INTERVAL) {
+            object : CountDownTimer(delay, COUNTDOWN_INTERVAL) {
                 override fun onFinish() = executeDelay.invoke(true)
-                override fun onTick(millisUntilFinished: Long) = executeDelay.invoke(false)
+                override fun onTick(millisUntilFinished: Long) { }
             }.start()
         }
 

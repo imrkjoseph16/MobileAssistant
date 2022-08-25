@@ -1,10 +1,15 @@
 package com.imrkjoseph.echomobileassistant.service
 
 import android.annotation.SuppressLint
-import android.app.*
+import android.app.AlarmManager
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.*
+import android.os.Bundle
+import android.os.CountDownTimer
+import android.os.PowerManager
+import android.os.SystemClock
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
@@ -13,24 +18,27 @@ import android.view.LayoutInflater
 import android.view.WindowManager
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.COUNTDOWN_INTERVAL
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.DB_TYPE_QUESTION
+import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.DELAY_SECONDS
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.ECHO_NAME
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.HOUR_TO_MILLIS
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.LOG_TAG
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.NOTIFICATION_WORD
+import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.TEXT_TO_SPEECH_ID
 import com.imrkjoseph.echomobileassistant.app.common.callback.UtteranceProgressListener
 import com.imrkjoseph.echomobileassistant.app.common.data.NotificationForm
 import com.imrkjoseph.echomobileassistant.app.common.data.SmsStateForm
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.adjustBrightness
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.executeDelay
+import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.formatString
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.getCurrentDateTime
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.getErrorText
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.setCoroutine
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.setServiceState
 import com.imrkjoseph.echomobileassistant.app.common.navigation.Actions
 import com.imrkjoseph.echomobileassistant.app.common.notification.NotificationBuilder.Companion.setupNotification
-import com.imrkjoseph.echomobileassistant.app.common.widget.EchoFloatingView
 import com.imrkjoseph.echomobileassistant.app.common.service.NotificationService
 import com.imrkjoseph.echomobileassistant.app.common.service.SmsStateService
+import com.imrkjoseph.echomobileassistant.app.common.widget.EchoFloatingView
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.launch
@@ -60,6 +68,8 @@ class EchoService : ServiceViewModel(),
     private var isListening = false
 
     private var commandRecentType = ""
+
+    lateinit var notificationForm: NotificationForm
 
     override fun onCreate() {
         super.onCreate()
@@ -92,6 +102,8 @@ class EchoService : ServiceViewModel(),
         //Handling the state management from commands.
         onServiceState = {
             when(it) {
+                is ReadNotification -> readNotification()
+                is HandleNotification -> handleNotification(it.notificationForm)
                 is ExecuteSpeak -> executeSpeaking(word = it.wordSpeak)
                 is GetCurrentDateTime -> executeSpeaking(
                     word = getCurrentDateTime(it.value)
@@ -187,13 +199,22 @@ class EchoService : ServiceViewModel(),
         textToSpeech = TextToSpeech(this, this, "com.google.android.tts")
         textToSpeech?.setOnUtteranceProgressListener(
             UtteranceProgressListener {
-            //Not yet implemented
+            setCoroutine(Main).launch {
+                //Reset commandRecentType after 5 seconds,
+                //If the user are not responding.
+                resetInteraction(
+                    userInteract = commandRecentType == DB_TYPE_QUESTION,
+                    DELAY_SECONDS
+                )
+            }
         })
         textToSpeech?.language = Locale.UK
     }
 
     private fun executeSpeaking(word: String) {
-        textToSpeech?.speak(word, TextToSpeech.QUEUE_ADD, null)
+        val bundle = Bundle()
+        bundle.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "")
+        textToSpeech?.speak(word, TextToSpeech.QUEUE_FLUSH, bundle, TEXT_TO_SPEECH_ID)
     }
 
     private fun setupSpeechRecognizer() {
@@ -244,7 +265,7 @@ class EchoService : ServiceViewModel(),
         matches: ArrayList<String>?
     ) {
         setCoroutine(Main).launch {
-            //Check the commandRecentType if equals to question,
+            //Check the commandRecentType if equals to "question",
             //It means echo needs to interact again to the user.
             val userInteract = commandRecentType == DB_TYPE_QUESTION
 
@@ -258,18 +279,42 @@ class EchoService : ServiceViewModel(),
                     commandRecentType = commandForm.type.toString()
                 }
             }
-
-            //Reset commandRecentType after 4 seconds,
-            //If the user are not responding.
-            resetInteraction(userInteract)
         }
     }
 
     private fun resetInteraction(
-        userInteract: Boolean
+        userInteract: Boolean,
+        delaySeconds: Long
     ) {
         if (userInteract) {
-            executeDelay { commandRecentType = "" }
+            executeDelay(delaySeconds) { commandRecentType = "" }
+        }
+    }
+
+    private fun handleNotification(notification: NotificationForm) {
+        if (notification.packageName != null) {
+            executeSpeaking(notification.title.toString())
+
+            //Set the commandRecentType from "question"
+            //to interact again with user because in this thread
+            //echo will ask, if he will "read" the notification.
+            commandRecentType = DB_TYPE_QUESTION
+
+            //Getting the notification data to read,
+            //if the user says the word "read"
+            notificationForm = notification
+        }
+    }
+
+    private fun readNotification() {
+        if (this::notificationForm.isInitialized) {
+            //Check if the echo is speaking then stop it,
+            //then execute speak method.
+            textToSpeech?.apply { if (isSpeaking) stop() }
+
+            executeSpeaking(
+                word = notificationForm.description.toString()
+            )
         }
     }
 
@@ -296,15 +341,19 @@ class EchoService : ServiceViewModel(),
     override fun onNotificationReceived(
         notification: NotificationForm
     ) {
-        if (notification.packageName != null) {
-            executeSpeaking("$NOTIFICATION_WORD ${notification.title}")
-        }
+        handleNotification(notification = NotificationForm(
+            title = formatString(this,
+                NOTIFICATION_WORD,
+                notification.title.toString()
+            ),
+            description = notification.description
+        ))
     }
 
     override fun onSmsReceived(smsForm: SmsStateForm) {
         when(smsForm.isCalling) {
             true -> handlingCallState(this, smsForm.smsNumber)
-            false -> handlingSmsState(this, smsForm.senderName)
+            false -> handlingSmsState(this, smsForm)
         }
     }
 }
