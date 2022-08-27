@@ -17,17 +17,25 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.WindowManager
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.COUNTDOWN_INTERVAL
+import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.DB_TYPE_LEARN
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.DB_TYPE_QUESTION
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.DELAY_SECONDS
-import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.ECHO_NAME
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.HOUR_TO_MILLIS
+import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.LEARN_RESPONSE_WORD
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.LOG_TAG
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.NOTIFICATION_WORD
+import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.SUCCESS_LEARN_RESPONSE
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.TEXT_TO_SPEECH_ID
+import com.imrkjoseph.echomobileassistant.app.common.callback.ExecuteDone
+import com.imrkjoseph.echomobileassistant.app.common.callback.ExecuteError
+import com.imrkjoseph.echomobileassistant.app.common.callback.ExecuteStart
 import com.imrkjoseph.echomobileassistant.app.common.callback.UtteranceProgressListener
 import com.imrkjoseph.echomobileassistant.app.common.data.NotificationForm
 import com.imrkjoseph.echomobileassistant.app.common.data.SmsStateForm
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.adjustBrightness
+import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.checkIfResetInteract
+import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.checkIfUserInteract
+import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.checkIsWordEcho
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.executeDelay
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.formatString
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.getCurrentDateTime
@@ -51,7 +59,7 @@ class EchoService : ServiceViewModel(),
 
     private val smsStateService by lazy { SmsStateService(this) }
 
-    private val fiberListener by lazy { this }
+    private lateinit var notificationForm: NotificationForm
 
     private var wakeLock: PowerManager.WakeLock? = null
 
@@ -69,7 +77,15 @@ class EchoService : ServiceViewModel(),
 
     private var commandRecentType = ""
 
-    lateinit var notificationForm: NotificationForm
+    private var learnNewCommand = ""
+
+    private val fiberListener by lazy { this }
+
+    private val delayListener by lazy {
+        executeDelay(DELAY_SECONDS) {
+            commandRecentType = ""
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -103,8 +119,9 @@ class EchoService : ServiceViewModel(),
         onServiceState = {
             when(it) {
                 is ReadNotification -> readNotification()
-                is HandleNotification -> handleNotification(it.notificationForm)
+                is LearnNewResponse -> learnNewResponse(it.words)
                 is ExecuteSpeak -> executeSpeaking(word = it.wordSpeak)
+                is HandleNotification -> handleNotification(it.notificationForm)
                 is GetCurrentDateTime -> executeSpeaking(
                     word = getCurrentDateTime(it.value)
                 )
@@ -200,12 +217,11 @@ class EchoService : ServiceViewModel(),
         textToSpeech?.setOnUtteranceProgressListener(
             UtteranceProgressListener {
             setCoroutine(Main).launch {
-                //Reset commandRecentType after 5 seconds,
-                //If the user are not responding.
-                resetInteraction(
-                    userInteract = commandRecentType == DB_TYPE_QUESTION,
-                    DELAY_SECONDS
-                )
+                when(it) {
+                    is ExecuteDone -> resetInteraction(checkIfResetInteract(commandRecentType))
+                    is ExecuteStart -> stopListening()
+                    is ExecuteError -> executeListening()
+                }
             }
         })
         textToSpeech?.language = Locale.UK
@@ -232,6 +248,11 @@ class EchoService : ServiceViewModel(),
 
     private fun executeListening() {
         speech?.startListening(recognizerIntent)
+    }
+
+    private fun stopListening() {
+        speech?.cancel()
+        speech?.stopListening()
     }
 
     //Text To Speech Initializer
@@ -262,33 +283,68 @@ class EchoService : ServiceViewModel(),
     }
 
     private fun handleResultState(
-        matches: ArrayList<String>?
+        words: ArrayList<String>?
     ) {
         setCoroutine(Main).launch {
-            //Check the commandRecentType if equals to "question",
+            //Check the commandRecentType if equals to "question" or "learn",
             //It means echo needs to interact again to the user.
-            val userInteract = commandRecentType == DB_TYPE_QUESTION
+            val userInteract = checkIfUserInteract(commandRecentType)
 
-            if (matches.toString().contains(ECHO_NAME) ||
-                userInteract
-            ) {
+            if (checkIsWordEcho(words) || userInteract) {
+
+                //Cancel or stop the delayListener "isUserInteract",
+                //for echo to listen again for 5 seconds.
+                delayListener.cancel()
+
                 launch(IO) {
-                    val commandForm = readCommandList(matches)
-
-                    getCommandFunction(commandForm.output.toString())
-                    commandRecentType = commandForm.type.toString()
+                    when(commandRecentType) {
+                        DB_TYPE_LEARN -> addResetNewResponse(words?.get(0))
+                        else -> readCommands(words)
+                    }
                 }
             }
         }
     }
 
-    private fun resetInteraction(
-        userInteract: Boolean,
-        delaySeconds: Long
-    ) {
-        if (userInteract) {
-            executeDelay(delaySeconds) { commandRecentType = "" }
-        }
+    private fun readCommands(words: ArrayList<String>?) {
+        val commandForm = readCommandList(words)
+
+        getCommandFunction(commandForm, words)
+        if (commandForm.type != null) commandRecentType = commandForm.type.toString()
+    }
+
+    private fun resetInteraction(userInteract: Boolean) {
+        //Execute listen again after text to speech
+        //recognizer finished talking.
+        executeListening()
+
+        //Reset commandRecentType after 5 seconds,
+        //If the user are not responding.
+        if (userInteract) delayListener.start()
+    }
+
+    private fun learnNewResponse(words: String) {
+        executeSpeaking(word = "$LEARN_RESPONSE_WORD $words?")
+
+        //Set the commandRecentType to type "learn"
+        //to identify if echo needs to learn new response.
+        commandRecentType = DB_TYPE_LEARN
+        learnNewCommand = words
+    }
+
+    private fun addResetNewResponse(newResponse: String?) {
+        executeSpeaking(word = SUCCESS_LEARN_RESPONSE)
+
+        //Adding the newResponse for new keyWord to database.
+        addNewResponse(mapNewCommandForm(
+            newKeyWord = learnNewCommand,
+            newResponse = newResponse
+        ))
+
+        //Reset commandType and newCommand variables,
+        //to recognize new words.
+        commandRecentType = ""
+        learnNewCommand = ""
     }
 
     private fun handleNotification(notification: NotificationForm) {

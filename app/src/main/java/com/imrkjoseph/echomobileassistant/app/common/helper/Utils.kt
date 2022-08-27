@@ -9,9 +9,15 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.speech.SpeechRecognizer
 import com.imrkjoseph.echomobileassistant.R
+import com.imrkjoseph.echomobileassistant.app.common.Default
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.COUNTDOWN_INTERVAL
-import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.DELAY_SECONDS
+import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.DB_TYPE_LEARN
+import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.DB_TYPE_QUESTION
+import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.DB_TYPE_WORD_ARRAY
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.ERROR_WORD
+import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.KEYWORD_ECHO
+import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.KEYWORD_ECO
+import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.echoNameList
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.key
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.name
 import com.imrkjoseph.echomobileassistant.service.ServiceEnum
@@ -21,11 +27,49 @@ import kotlinx.coroutines.Job
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.coroutines.CoroutineContext
 
 
 class Utils {
+
     companion object {
+        fun checkIsWordEcho(words: ArrayList<String>?) : Boolean {
+            var isMatched = false
+            echoNameList.forEach {
+                if (words.toString().contains(it)) {
+                    isMatched = true
+                    return@forEach
+                }
+            }
+            return isMatched
+        }
+
+        fun removeWordEcho(words: String) : String {
+            val splitWords = words.splitToSequence(
+                KEYWORD_ECHO, KEYWORD_ECO
+            ).toList()
+
+            return try {
+                when {
+                    splitWords[0].contains(KEYWORD_ECHO) -> splitWords[1]
+                    else -> splitWords[0]
+                }
+            } catch (e: Exception) {
+                words
+            }
+        }
+
+        fun checkIfUserInteract(commandRecentType: String) : Boolean {
+            return (commandRecentType == DB_TYPE_QUESTION
+                    || commandRecentType == DB_TYPE_LEARN)
+        }
+
+        fun checkIfResetInteract(commandRecentType: String) : Boolean {
+            return (commandRecentType == DB_TYPE_QUESTION
+                    || commandRecentType == DB_TYPE_LEARN
+                    || commandRecentType == DB_TYPE_WORD_ARRAY)
+        }
 
         fun setCoroutine(dispatcher: CoroutineDispatcher): CoroutineScope {
             val job = Job()
@@ -55,11 +99,11 @@ class Utils {
 
         fun executeDelay(delay: Long, executeDelay: (
             timer: Boolean
-        ) -> Unit) {
-            object : CountDownTimer(delay, COUNTDOWN_INTERVAL) {
+        ) -> Unit) : CountDownTimer {
+            return object : CountDownTimer(delay, COUNTDOWN_INTERVAL) {
                 override fun onFinish() = executeDelay.invoke(true)
                 override fun onTick(millisUntilFinished: Long) { }
-            }.start()
+            }
         }
 
         fun getErrorText(errorCode: Int): String {

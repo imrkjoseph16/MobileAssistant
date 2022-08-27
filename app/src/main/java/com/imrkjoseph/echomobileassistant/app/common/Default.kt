@@ -9,7 +9,8 @@ class Default {
 
     companion object {
         const val LOG_TAG = "ECHO"
-        const val ECHO_NAME = "echo"
+        const val KEYWORD_ECHO = "echo"
+        const val KEYWORD_ECO = "eco"
         const val TEXT_TO_SPEECH_ID = "UniqueID"
         const val ERROR_WORD = "Something is wrong, Please try again"
         const val NOTIFICATION_WORD = "You have a new notification from"
@@ -18,6 +19,8 @@ class Default {
         const val INCOMING_NEW_SMS = "You have a new message from "
         const val INCOMING_UNKNOWN_SMS = "You have a new message from unknown number,"
         const val INCOMING_UNKNOWN_CALL_WORD = "You have an incoming call from unknown number"
+        const val LEARN_RESPONSE_WORD = "I'm not sure how to response, can you teach me what I can respond to"
+        const val SUCCESS_LEARN_RESPONSE = "Noted on this, next time you ask me, I know what I will answer"
 
         const val PH_NUMBER_FORMAT = "+63"
         const val PH_FIRST_NUMBER_FORMAT = "09"
@@ -32,6 +35,10 @@ class Default {
         const val DB_OUTPUT = "output"
         const val DB_TYPE = "type"
         const val DB_TYPE_QUESTION = "question"
+        const val DB_TYPE_LEARN = "learn"
+        const val DB_EXECUTE_SPEAK = "executeSpeaking"
+        const val DB_TYPE_WORD = "word"
+        const val DB_TYPE_WORD_ARRAY = "wordArray"
 
         //SMS Permission
         const val SMS_RECEIVED = "android.provider.Telephony.SMS_RECEIVED"
@@ -45,6 +52,7 @@ class Default {
         const val DELAY_SECONDS = 5000L
 
         val heightList = intArrayOf(22, 26, 20, 25, 18)
+        val echoNameList = arrayListOf("echo", "eco")
 
         fun getRecognitionColor(context: Context): IntArray {
             return intArrayOf(

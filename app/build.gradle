@@ -3,6 +3,7 @@ plugins {
     id 'org.jetbrains.kotlin.android'
     id "dagger.hilt.android.plugin"
     id 'kotlin-kapt'
+    id 'kotlinx-serialization'
 }
 
 android {
@@ -49,6 +50,12 @@ dependencies {
 
     //Coroutine
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.0-M2'
+
+    //Kotlin Serializable
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.2.2'
+
+    //Gson Parser
+    implementation 'com.google.code.gson:gson:2.8.7'
 
     //ViewModel
     implementation "android.arch.lifecycle:extensions:1.1.1"

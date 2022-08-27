@@ -26,5 +26,9 @@ data class HandleNotification(
     var notificationForm: NotificationForm
 ) : ServiceState()
 
+data class LearnNewResponse(
+    var words: String
+) : ServiceState()
+
 //Objects
 object ReadNotification : ServiceState()
