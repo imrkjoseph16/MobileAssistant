@@ -73,7 +73,9 @@ class EchoService : ServiceViewModel(),
 
     private var isServiceStarted = false
 
-    private var isListening = false
+    private var isListeningState = false
+
+    private var isListeningResult = true
 
     private var commandRecentType = ""
 
@@ -141,7 +143,7 @@ class EchoService : ServiceViewModel(),
             override fun onFinish() {
                 checkSpeechTimer()
 
-                if (!isListening) executeListening()
+                if (!isListeningState) executeListening()
             }
         }
         timer.start()
@@ -218,9 +220,9 @@ class EchoService : ServiceViewModel(),
             UtteranceProgressListener {
             setCoroutine(Main).launch {
                 when(it) {
-                    is ExecuteDone -> resetInteraction(checkIfResetInteract(commandRecentType))
+                    is ExecuteDone, ExecuteError -> resetInteraction(
+                        checkIfResetInteract(commandRecentType))
                     is ExecuteStart -> stopListening()
-                    is ExecuteError -> executeListening()
                 }
             }
         })
@@ -251,8 +253,7 @@ class EchoService : ServiceViewModel(),
     }
 
     private fun stopListening() {
-        speech?.cancel()
-        speech?.stopListening()
+        isListeningResult = false
     }
 
     //Text To Speech Initializer
@@ -296,10 +297,12 @@ class EchoService : ServiceViewModel(),
                 //for echo to listen again for 5 seconds.
                 delayListener.cancel()
 
-                launch(IO) {
-                    when(commandRecentType) {
-                        DB_TYPE_LEARN -> addResetNewResponse(words?.get(0))
-                        else -> readCommands(words)
+                if (isListeningResult) {
+                    launch(IO) {
+                        when (commandRecentType) {
+                            DB_TYPE_LEARN -> addResetNewResponse(words?.get(0))
+                            else -> readCommands(words)
+                        }
                     }
                 }
             }
@@ -316,7 +319,7 @@ class EchoService : ServiceViewModel(),
     private fun resetInteraction(userInteract: Boolean) {
         //Execute listen again after text to speech
         //recognizer finished talking.
-        executeListening()
+        isListeningResult = true
 
         //Reset commandRecentType after 5 seconds,
         //If the user are not responding.
@@ -375,13 +378,13 @@ class EchoService : ServiceViewModel(),
     }
 
     override fun onBeginReadySpeech() {
-        isListening = true
+        isListeningState = true
     }
 
     override fun onError(errorCode: Int) {
         val errorMessage: String = getErrorText(errorCode)
         Log.d(LOG_TAG, "OnError: $errorMessage")
-        isListening = false
+        isListeningState = false
         executeListening()
     }
 
@@ -390,7 +393,7 @@ class EchoService : ServiceViewModel(),
     }
 
     override fun onEndOfSpeech() {
-        isListening = false
+        isListeningState = false
     }
 
     //Handling notification and sms/call receiver.
