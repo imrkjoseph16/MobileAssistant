@@ -70,26 +70,14 @@ open class ServiceViewModel : Service() {
                 val speakWord = function.split(":")
 
                 val commands = mutableMapOf(
-                    "executeSpeaking" to Runnable {
-                        onServiceState.invoke(ExecuteSpeak(wordSpeak = speakWord[1])
-                        ) },
-                    "getCurrentDateTime" to Runnable {
-                        onServiceState.invoke(GetCurrentDateTime(value = speakWord[1]))
-                    },
-                    "adjustBrightness" to Runnable {
-                        onServiceState.invoke(ExecuteBrightness(brightness = 20F))
-                    },
-                    "readNotification" to Runnable {
-                        onServiceState.invoke(ReadNotification)
-                    }
+                    "executeSpeaking" to run { onServiceState.invoke(ExecuteSpeak(wordSpeak = speakWord[1])) },
+                    "getCurrentDateTime" to run { onServiceState.invoke(GetCurrentDateTime(value = speakWord[1])) },
+                    "adjustBrightness" to run { onServiceState.invoke(ExecuteBrightness(brightness = 20F)) },
+                    "readNotification" to run { onServiceState.invoke(ReadNotification) }
                 )
                 // Check if the function contains (":")
                 // it means execute speak method.
-                commands[if (function.contains(":")) {
-                    speakWord[0]
-                } else {
-                    function
-                }]?.run()
+                commands[if (function.contains(":")) speakWord[0] else function]
             } catch (e: Exception) { }
         }
     }
