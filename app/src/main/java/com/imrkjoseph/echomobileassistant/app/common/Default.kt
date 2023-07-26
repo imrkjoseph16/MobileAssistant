@@ -54,23 +54,19 @@ class Default {
         val heightList = intArrayOf(22, 26, 20, 25, 18)
         val echoNameList = arrayListOf("echo", "eco")
 
-        fun getRecognitionColor(context: Context): IntArray {
-            return intArrayOf(
-                ContextCompat.getColor(context, R.color.color1),
-                ContextCompat.getColor(context, R.color.color2),
-                ContextCompat.getColor(context, R.color.color3),
-                ContextCompat.getColor(context, R.color.color4),
-                ContextCompat.getColor(context, R.color.color5)
-            )
-        }
+        fun getRecognitionColor(context: Context) = intArrayOf(
+            ContextCompat.getColor(context, R.color.color1),
+            ContextCompat.getColor(context, R.color.color2),
+            ContextCompat.getColor(context, R.color.color3),
+            ContextCompat.getColor(context, R.color.color4),
+            ContextCompat.getColor(context, R.color.color5)
+        )
 
-        fun getEchoPermissions() : Array<out String> {
-            return arrayOf(
-                Manifest.permission.READ_SMS,
-                Manifest.permission.CALL_PHONE,
-                Manifest.permission.RECEIVE_SMS,
-                Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.READ_CONTACTS)
-        }
+        fun getEchoPermissions() = arrayOf(
+            Manifest.permission.READ_SMS,
+            Manifest.permission.CALL_PHONE,
+            Manifest.permission.RECEIVE_SMS,
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.READ_CONTACTS)
     }
 }

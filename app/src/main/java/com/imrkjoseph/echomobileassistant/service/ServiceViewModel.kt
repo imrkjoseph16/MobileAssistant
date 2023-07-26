@@ -8,11 +8,9 @@ import android.content.IntentFilter
 import android.os.IBinder
 import android.os.PowerManager
 import android.provider.ContactsContract
-import android.util.Log
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.DB_EXECUTE_SPEAK
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.DB_TYPE_WORD
-import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.DB_TYPE_WORD_ARRAY
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.INCOMING_CALL_WORD
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.INCOMING_NEW_SMS
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.INCOMING_SMS
@@ -25,13 +23,11 @@ import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.PH_NUMBER
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.SMS_RECEIVED
 import com.imrkjoseph.echomobileassistant.app.common.data.NotificationForm
 import com.imrkjoseph.echomobileassistant.app.common.data.SmsStateForm
-import com.imrkjoseph.echomobileassistant.app.common.helper.JsonHelper
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.formatString
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.removeWordEcho
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.wakeupScreen
 import com.imrkjoseph.echomobileassistant.app.common.service.SmsStateService
 import com.imrkjoseph.echomobileassistant.app.di.data.form.CommandForm
-import com.imrkjoseph.echomobileassistant.app.di.data.form.RandomResponseDto
 import com.imrkjoseph.echomobileassistant.app.di.data.gateway.repository.CommandRepository
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -44,9 +40,7 @@ open class ServiceViewModel : Service() {
     @Inject
     lateinit var commandRepository: CommandRepository
 
-    override fun onBind(p0: Intent?): IBinder? {
-        return null
-    }
+    override fun onBind(p0: Intent?): IBinder? = null
 
     fun registerReceiver(
         context: Context,
@@ -67,9 +61,9 @@ open class ServiceViewModel : Service() {
         val function = commandForm.output
 
         if (function == null) {
-            //Check if function return null,
-            //it means echo words on commandList is not found,
-            //and echo needs to learn a new response.
+            // Check if function return null,
+            // it means echo words on commandList is not found,
+            // and echo needs to learn a new response.
             onServiceState.invoke(LearnNewResponse(removeWordEcho(words.toString())))
         } else {
             try {
@@ -89,8 +83,8 @@ open class ServiceViewModel : Service() {
                         onServiceState.invoke(ReadNotification)
                     }
                 )
-                //Check if the function contains (":")
-                //it means execute speak method.
+                // Check if the function contains (":")
+                // it means execute speak method.
                 commands[if (function.contains(":")) {
                     speakWord[0]
                 } else {
@@ -108,21 +102,17 @@ open class ServiceViewModel : Service() {
     fun mapNewCommandForm(
         newKeyWord: String,
         newResponse: String?
-    ): CommandForm {
-        return CommandForm(
-            input = newKeyWord,
-            output = "$DB_EXECUTE_SPEAK:$newResponse",
-            type = DB_TYPE_WORD
-        )
-    }
+    ) = CommandForm(
+        input = newKeyWord,
+        output = "$DB_EXECUTE_SPEAK:$newResponse",
+        type = DB_TYPE_WORD
+    )
 
     fun readCommandList(words: ArrayList<String>?) : CommandForm {
         var function = CommandForm()
 
         commandRepository.getCommandList().forEach {
-            if (words.toString().contains(it.input.toString())) {
-                function = it
-            }
+            if (words.toString().contains(it.input.toString())) function = it
         }
         return function
     }
@@ -142,7 +132,7 @@ open class ServiceViewModel : Service() {
         }
 
         val cr: ContentResolver = context.contentResolver
-        // Fetch the matching number
+        //  Fetch the matching number
         val cursor = cr.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
             null,
@@ -188,7 +178,7 @@ open class ServiceViewModel : Service() {
 
         val cr: ContentResolver = context.contentResolver
 
-        //Fetch the matching number from contacts.
+        // Fetch the matching number from contacts.
         val cursor = cr.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
             null, ContactsContract.CommonDataKinds.Phone.NUMBER + " = ?",

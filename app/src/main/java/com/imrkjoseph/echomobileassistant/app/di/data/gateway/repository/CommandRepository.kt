@@ -5,7 +5,8 @@ import com.imrkjoseph.echomobileassistant.app.di.domain.CommandService
 import javax.inject.Inject
 
 class CommandRepository @Inject constructor(
-    commandService: CommandService) {
+    commandService: CommandService
+) {
 
     private val commandClient = commandService.commandDao()
 

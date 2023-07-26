@@ -37,11 +37,8 @@ class EchoFloatingView(
 
     @SuppressLint("InflateParams")
     private fun setupWindowManager() {
-        FLAG_LAYOUT = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        } else {
-            WindowManager.LayoutParams.TYPE_PHONE
-        }
+        FLAG_LAYOUT = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else WindowManager.LayoutParams.TYPE_PHONE)
 
         //Add the view to the window.
         params = WindowManager.LayoutParams(
@@ -86,34 +83,20 @@ class EchoFloatingView(
         }
     }
 
-    override fun onReadyForSpeech(params: Bundle?) {
-        fiberListener.onBeginReadySpeech()
-    }
+    override fun onReadyForSpeech(params: Bundle?) = fiberListener.onBeginReadySpeech()
 
-    override fun onBeginningOfSpeech() {
-        fiberListener.onBeginReadySpeech()
-    }
+    override fun onBeginningOfSpeech() = fiberListener.onBeginReadySpeech()
 
-    override fun onResults(results: Bundle) {
-        fiberListener.onResults(results)
-    }
+    override fun onResults(results: Bundle) = fiberListener.onResults(results)
 
-    override fun onError(error: Int) {
-        fiberListener.onError(error)
-    }
+    override fun onError(error: Int) = fiberListener.onError(error)
 
-    override fun onEndOfSpeech() {
-        fiberListener.onEndOfSpeech()
-    }
+    override fun onEndOfSpeech() = fiberListener.onEndOfSpeech()
 
     //Fiber Touch Listener
-    override fun onActionDown(onXParam: (xParam: Int, yParam: Int) -> Unit) {
-        onXParam.invoke(params?.x!!, params?.y!!)
-    }
+    override fun onActionDown(onXParam: (xParam: Int, yParam: Int) -> Unit) = onXParam.invoke(params?.x!!, params?.y!!)
 
-    override fun onActionUp() {
-        fiberListener.onFiberClicked()
-    }
+    override fun onActionUp() = fiberListener.onFiberClicked()
 
     override fun onActionMove(initialX: Int, initialY: Int) {
         //Calculate the X and Y coordinates of the view.

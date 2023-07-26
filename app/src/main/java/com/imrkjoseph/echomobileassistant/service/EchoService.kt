@@ -95,44 +95,40 @@ class EchoService : ServiceViewModel(),
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         startForeground(1, setupNotification(this, notificationManager))
 
-        //Text to Speech Recognizer
+        // Text to Speech Recognizer
         setupTextToSpeech()
 
-        //Setup Speech Recognizer
+        // Setup Speech Recognizer
         setupSpeechRecognizer()
         executeListening()
 
-        //Setup Fiber Floating View
+        // Setup Fiber Floating View
         setupFiberView()
 
-        //Checking every 1 hour if the speech listener
-        //has being running or stopped.
+        // Checking every 1 hour if the speech listener
+        // has being running or stopped.
         checkSpeechTimer()
 
-        //ViewModel Observer
+        // ViewModel Observer
         executeObserver()
     }
 
     private fun executeObserver() {
-        //Execute notification service thread.
+        // Execute notification service thread.
         NotificationService(this)
 
-        //Handling the state management from commands.
+        // Handling the state management from commands.
         onServiceState = {
             when(it) {
                 is ReadNotification -> readNotification()
-                is LearnNewResponse -> learnNewResponse(it.words)
                 is ExecuteSpeak -> executeSpeaking(word = it.wordSpeak)
-                is HandleNotification -> handleNotification(it.notificationForm)
-                is GetCurrentDateTime -> executeSpeaking(
-                    word = getCurrentDateTime(it.value)
+                is LearnNewResponse -> learnNewResponse(words = it.words)
+                is GetCurrentDateTime -> executeSpeaking(word = getCurrentDateTime(it.value))
+                is HandleNotification -> handleNotification(notification = it.notificationForm)
+                is ExecuteBrightness -> adjustBrightness(
+                    brightness = it.brightness,
+                    context = this
                 )
-                is ExecuteBrightness -> {
-                    adjustBrightness(
-                        brightness = it.brightness,
-                        context = this
-                    )
-                }
             }
         }
     }
@@ -143,7 +139,7 @@ class EchoService : ServiceViewModel(),
             override fun onFinish() {
                 checkSpeechTimer()
 
-                if (!isListeningState) executeListening()
+                executeListening().takeIf { isListeningState.not() }
             }
         }
         timer.start()
@@ -256,7 +252,7 @@ class EchoService : ServiceViewModel(),
         isListeningResult = false
     }
 
-    //Text To Speech Initializer
+    // Text To Speech Initializer
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             val result: Int? = textToSpeech?.setLanguage(Locale.UK)
@@ -268,7 +264,7 @@ class EchoService : ServiceViewModel(),
         }
     }
 
-    //Speech Recognizer Listener
+    // Speech Recognizer Listener
     override fun onResults(results: Bundle) {
         val matches: ArrayList<String>? = results.getStringArrayList(
             SpeechRecognizer.RESULTS_RECOGNITION
@@ -276,10 +272,10 @@ class EchoService : ServiceViewModel(),
 
         Log.d(LOG_TAG, "OnResult: $matches")
 
-        //Handling the onResult data from recognizer.
+        // Handling the onResult data from recognizer.
         handleResultState(matches)
 
-        //Listen again after result handling.
+        // Listen again after result handling.
         executeListening()
     }
 
@@ -287,14 +283,14 @@ class EchoService : ServiceViewModel(),
         words: ArrayList<String>?
     ) {
         setCoroutine(Main).launch {
-            //Check the commandRecentType if equals to "question" or "learn",
-            //It means echo needs to interact again to the user.
+            // Check the commandRecentType if equals to "question" or "learn",
+            // It means echo needs to interact again to the user.
             val userInteract = checkIfUserInteract(commandRecentType)
 
             if (checkIsWordEcho(words) || userInteract) {
 
-                //Cancel or stop the delayListener "isUserInteract",
-                //for echo to listen again for 5 seconds.
+                // Cancel or stop the delayListener "isUserInteract",
+                // for echo to listen again for 5 seconds.
                 delayListener.cancel()
 
                 if (isListeningResult) {
@@ -317,20 +313,20 @@ class EchoService : ServiceViewModel(),
     }
 
     private fun resetInteraction(userInteract: Boolean) {
-        //Execute listen again after text to speech
-        //recognizer finished talking.
+        // Execute listen again after text to speech
+        // recognizer finished talking.
         isListeningResult = true
 
-        //Reset commandRecentType after 5 seconds,
-        //If the user are not responding.
+        // Reset commandRecentType after 5 seconds,
+        // If the user are not responding.
         if (userInteract) delayListener.start()
     }
 
     private fun learnNewResponse(words: String) {
         executeSpeaking(word = "$LEARN_RESPONSE_WORD $words?")
 
-        //Set the commandRecentType to type "learn"
-        //to identify if echo needs to learn new response.
+        // Set the commandRecentType to type "learn"
+        // to identify if echo needs to learn new response.
         commandRecentType = DB_TYPE_LEARN
         learnNewCommand = words
     }
@@ -338,14 +334,14 @@ class EchoService : ServiceViewModel(),
     private fun addResetNewResponse(newResponse: String?) {
         executeSpeaking(word = SUCCESS_LEARN_RESPONSE)
 
-        //Adding the newResponse for new keyWord to database.
+        // Adding the newResponse for new keyWord to database.
         addNewResponse(mapNewCommandForm(
             newKeyWord = learnNewCommand,
             newResponse = newResponse
         ))
 
-        //Reset commandType and newCommand variables,
-        //to recognize new words.
+        // Reset commandType and newCommand variables,
+        // to recognize new words.
         commandRecentType = ""
         learnNewCommand = ""
     }
@@ -354,21 +350,21 @@ class EchoService : ServiceViewModel(),
         if (notification.packageName != null) {
             executeSpeaking(notification.title.toString())
 
-            //Set the commandRecentType from "question"
-            //to interact again with user because in this thread
-            //echo will ask, if he will "read" the notification.
+            // Set the commandRecentType from "question"
+            // to interact again with user because in this thread
+            // echo will ask, if he will "read" the notification.
             commandRecentType = DB_TYPE_QUESTION
 
-            //Getting the notification data to read,
-            //if the user says the word "read"
+            // Getting the notification data to read,
+            // if the user says the word "read"
             notificationForm = notification
         }
     }
 
     private fun readNotification() {
         if (this::notificationForm.isInitialized) {
-            //Check if the echo is speaking then stop it,
-            //then execute speak method.
+            // Check if the echo is speaking then stop it,
+            // then execute speak method.
             textToSpeech?.apply { if (isSpeaking) stop() }
 
             executeSpeaking(
@@ -396,7 +392,7 @@ class EchoService : ServiceViewModel(),
         isListeningState = false
     }
 
-    //Handling notification and sms/call receiver.
+    // Handling notification and sms/call receiver.
     override fun onNotificationReceived(
         notification: NotificationForm
     ) {
@@ -411,8 +407,8 @@ class EchoService : ServiceViewModel(),
 
     override fun onSmsReceived(smsForm: SmsStateForm) {
         when(smsForm.isCalling) {
-            true -> handlingCallState(this, smsForm.smsNumber)
-            false -> handlingSmsState(this, smsForm)
+            true -> handlingCallState(context = this, callerNumber = smsForm.smsNumber)
+            else -> handlingSmsState(context = this, smsForm = smsForm)
         }
     }
 }
