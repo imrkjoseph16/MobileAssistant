@@ -81,7 +81,7 @@ class EchoService : ServiceViewModel(),
 
     private var learnNewCommand = ""
 
-    private val fiberListener by lazy { this }
+    private val echoListener by lazy { this }
 
     private val delayListener by lazy {
         executeDelay(DELAY_SECONDS) {
@@ -166,7 +166,7 @@ class EchoService : ServiceViewModel(),
             inflater = inflater,
             windowManager = windowManager,
             speechRecognizer = speech,
-            fiberListener = fiberListener
+            echoListener = echoListener
         )
     }
 
