@@ -3,11 +3,16 @@ package com.imrkjoseph.echomobileassistant.app.common.helper
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.os.AsyncTask
+import android.os.Build
 import android.os.CountDownTimer
 import android.os.PowerManager
 import android.provider.Settings
 import android.speech.SpeechRecognizer
+import androidx.annotation.RequiresApi
 import com.imrkjoseph.echomobileassistant.R
 import com.imrkjoseph.echomobileassistant.app.common.Default
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.COUNTDOWN_INTERVAL
@@ -172,5 +177,10 @@ class Utils {
             smsDescription,
             senderName
         )
+
+        fun audioAttributes() = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_MEDIA)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+        .build()
     }
 }

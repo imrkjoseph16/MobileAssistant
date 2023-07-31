@@ -54,7 +54,7 @@ open class ServiceViewModel : Service() {
         }
     }
 
-    fun getCommandFunction(
+    fun getCommandAndRunFunction(
         commandForm: CommandForm,
         words: ArrayList<String>?
     ) {
@@ -64,7 +64,7 @@ open class ServiceViewModel : Service() {
             // Check if function return null,
             // it means echo words on commandList is not found,
             // and echo needs to learn a new response.
-            onServiceState.invoke(LearnNewResponse(removeWordEcho(words.toString())))
+            onServiceState.invoke(LearnNewResponse(removeWordEcho(words = words.toString())))
         } else {
             try {
                 val speakWord = function.split(":")

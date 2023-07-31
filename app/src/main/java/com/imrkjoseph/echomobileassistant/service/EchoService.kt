@@ -20,6 +20,7 @@ import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.COUNTDOWN
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.DB_TYPE_LEARN
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.DB_TYPE_QUESTION
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.DELAY_SECONDS
+import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.ERROR_NO_MATCH
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.HOUR_TO_MILLIS
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.LEARN_RESPONSE_WORD
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.LOG_TAG
@@ -33,6 +34,7 @@ import com.imrkjoseph.echomobileassistant.app.common.callback.UtteranceProgressL
 import com.imrkjoseph.echomobileassistant.app.common.data.NotificationForm
 import com.imrkjoseph.echomobileassistant.app.common.data.SmsStateForm
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.adjustBrightness
+import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.audioAttributes
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.checkIfResetInteract
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.checkIfUserInteract
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.checkIsWordEcho
@@ -80,6 +82,8 @@ class EchoService : ServiceViewModel(),
     private var commandRecentType = ""
 
     private var learnNewCommand = ""
+
+    private var onErrorResult = ""
 
     private val echoListener by lazy { this }
 
@@ -222,6 +226,7 @@ class EchoService : ServiceViewModel(),
             }
         })
         textToSpeech?.language = Locale.UK
+        textToSpeech?.setAudioAttributes(audioAttributes())
     }
 
     private fun executeSpeaking(word: String) {
@@ -241,6 +246,12 @@ class EchoService : ServiceViewModel(),
             RecognizerIntent.EXTRA_LANGUAGE_MODEL,
             RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
         )
+    }
+
+    private fun resetSpeechRecognizer() {
+        speech?.cancel()
+        speech?.stopListening()
+        executeListening()
     }
 
     private fun executeListening() {
@@ -305,10 +316,13 @@ class EchoService : ServiceViewModel(),
     }
 
     private fun readCommands(words: ArrayList<String>?) {
-        val commandForm = readCommandList(words)
+        val commandForm = readCommandList(words = words)
 
-        getCommandFunction(commandForm, words)
-        if (commandForm.type != null) commandRecentType = commandForm.type.toString()
+        getCommandAndRunFunction(commandForm, words).also {
+            // Saved the recent commandType from the database,
+            // purpose of this is to reset the recentType if it equals to DB_TYPE_LEARN recent value.
+            if (commandForm.type != null) commandRecentType = commandForm.type.toString()
+        }
     }
 
     private fun resetInteraction(userInteract: Boolean) {
@@ -377,14 +391,17 @@ class EchoService : ServiceViewModel(),
     }
 
     override fun onError(errorCode: Int) {
-        val errorMessage: String = getErrorText(errorCode)
-        Log.d(LOG_TAG, "OnError: $errorMessage")
+        getErrorText(errorCode).apply {
+            onErrorResult = this
+            Log.d(LOG_TAG, "OnError: $onErrorResult")
+        }
+
         isListeningState = false
         executeListening()
     }
 
     override fun onEchoClicked() {
-        executeListening()
+        resetSpeechRecognizer().takeIf { onErrorResult != ERROR_NO_MATCH }
     }
 
     override fun onEndOfSpeech() {
