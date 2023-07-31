@@ -53,7 +53,7 @@ import kotlinx.coroutines.launch
 import java.util.*
 
 class EchoService : ServiceViewModel(),
-    EchoFloatingView.FiberFloatingListener,
+    EchoFloatingView.EchoFloatingListener,
     TextToSpeech.OnInitListener,
     NotificationService.NotificationSmsListener {
 
@@ -216,8 +216,7 @@ class EchoService : ServiceViewModel(),
             UtteranceProgressListener {
             setCoroutine(Main).launch {
                 when(it) {
-                    is ExecuteDone, ExecuteError -> resetInteraction(
-                        checkIfResetInteract(commandRecentType))
+                    is ExecuteDone, ExecuteError -> resetInteraction(userInteract = checkIfResetInteract(commandRecentType))
                     is ExecuteStart -> stopListening()
                 }
             }
@@ -296,8 +295,8 @@ class EchoService : ServiceViewModel(),
                 if (isListeningResult) {
                     launch(IO) {
                         when (commandRecentType) {
-                            DB_TYPE_LEARN -> addResetNewResponse(words?.get(0))
-                            else -> readCommands(words)
+                            DB_TYPE_LEARN -> addResetNewResponse(newResponse = words?.get(0))
+                            else -> readCommands(words = words)
                         }
                     }
                 }
@@ -335,7 +334,7 @@ class EchoService : ServiceViewModel(),
         executeSpeaking(word = SUCCESS_LEARN_RESPONSE)
 
         // Adding the newResponse for new keyWord to database.
-        addNewResponse(mapNewCommandForm(
+        addNewResponse(transformNewCommandForm(
             newKeyWord = learnNewCommand,
             newResponse = newResponse
         ))
@@ -397,9 +396,10 @@ class EchoService : ServiceViewModel(),
         notification: NotificationForm
     ) {
         handleNotification(notification = NotificationForm(
-            title = formatString(this,
-                NOTIFICATION_WORD,
-                notification.title.toString()
+            title = formatString(
+                context = this,
+                smsDescription = NOTIFICATION_WORD,
+                senderName = notification.title.toString()
             ),
             description = notification.description
         ))

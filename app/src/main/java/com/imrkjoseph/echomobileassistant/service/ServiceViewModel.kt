@@ -87,7 +87,7 @@ open class ServiceViewModel : Service() {
         return rowCount.toInt() != -1
     }
 
-    fun mapNewCommandForm(
+    fun transformNewCommandForm(
         newKeyWord: String,
         newResponse: String?
     ) = CommandForm(
@@ -149,9 +149,9 @@ open class ServiceViewModel : Service() {
             notificationForm = NotificationForm(
                 packageName = smsForm?.senderName,
                 title = formatString(
-                    context,
-                    smsType,
-                    contactName
+                    context = context,
+                    smsDescription = smsType,
+                    senderName = contactName
                 ),
                 description = smsForm?.smsMessage
             )
