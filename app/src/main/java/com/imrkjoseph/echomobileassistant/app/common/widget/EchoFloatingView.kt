@@ -94,7 +94,7 @@ class EchoFloatingView(
     // Echo Touch Listener
     override fun onActionDown(onXParam: (xParam: Int, yParam: Int) -> Unit) = onXParam.invoke(params?.x!!, params?.y!!)
 
-    override fun onActionUp() = echoListener.onFiberClicked()
+    override fun onActionUp() = echoListener.onEchoClicked()
 
     override fun onActionMove(initialX: Int, initialY: Int) {
         // Calculate the X and Y coordinates of the view.
@@ -109,7 +109,7 @@ class EchoFloatingView(
         fun onBeginReadySpeech()
         fun onError(errorCode: Int)
         fun onResults(results: Bundle)
-        fun onFiberClicked()
+        fun onEchoClicked()
         fun onEndOfSpeech()
     }
 }

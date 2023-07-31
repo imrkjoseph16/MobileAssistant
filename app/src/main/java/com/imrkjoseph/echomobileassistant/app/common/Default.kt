@@ -46,7 +46,6 @@ class Default {
         const val OUTGOING_CALL = "android.intent.action.NEW_OUTGOING_CALL"
 
         const val PERMISSIONS_ECHO = 1
-        const val PERMISSION_DRAW_OVER_OVERLAY = 2
         const val COUNTDOWN_INTERVAL = 1000L
         const val HOUR_TO_MILLIS = 3600000L
         const val DELAY_SECONDS = 5000L

@@ -39,7 +39,7 @@ class NotificationBuilder {
 
             val pendingIntent: PendingIntent = Intent(context,
                 FacilityActivity::class.java).let { notificationIntent ->
-                PendingIntent.getActivity(context, 0, notificationIntent, 0)
+                PendingIntent.getActivity(context, 0, notificationIntent, PendingIntent.FLAG_MUTABLE)
             }
 
             val builder: Notification.Builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)

@@ -1,15 +1,17 @@
 package com.imrkjoseph.echomobileassistant.activity
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.view.LayoutInflater
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.PERMISSIONS_ECHO
-import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.PERMISSION_DRAW_OVER_OVERLAY
 import com.imrkjoseph.echomobileassistant.app.base.BaseActivity
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.getEchoPermissions
 import com.imrkjoseph.echomobileassistant.app.common.helper.Utils.Companion.getServiceState
@@ -34,38 +36,43 @@ class FacilityActivity : BaseActivity<ActivityFacilityBinding>() {
         if (!viewModel.checkPermissions(this, getEchoPermissions())) {
             requestPermission()
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-            && !Settings.canDrawOverlays(this)) {
+            && canOverlayLayout().not()) {
             openOverlayPermission()
         } else {
-            setupService(Actions.START)
+            setupService(action = Actions.START)
         }
     }
 
-    private fun requestPermission() {
-        ActivityCompat.requestPermissions(
-            this, getEchoPermissions(),
-            PERMISSIONS_ECHO)
-    }
+    private fun requestPermission() = ActivityCompat.requestPermissions(
+        this, getEchoPermissions(),
+        PERMISSIONS_ECHO)
 
+    @RequiresApi(Build.VERSION_CODES.M)
     private fun openOverlayPermission(){
-        //If the draw over permission is not available open the settings screen
-        //to grant the permission.
+        // If the draw over permission is not available open the settings screen
+        // to grant the permission.
         val intent = Intent(
             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
             Uri.parse("package:$packageName")
         )
-        startActivityForResult(intent, PERMISSION_DRAW_OVER_OVERLAY)
+        startForResultPermission.launch(intent)
     }
 
     private fun setupService(action: Actions) {
         if (getServiceState(this) == ServiceEnum.STOPPED && action == Actions.STOP) return
         Intent(this, EchoService::class.java).also {
             it.action = action.name
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(it)
-                return
-            }
-            startService(it)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(it)
+            else startService(it)
+            finish()
+        }
+    }
+
+    private val startForResultPermission = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result: ActivityResult ->
+        setupService(action = Actions.START).takeIf { 
+            result.resultCode == Activity.RESULT_OK && canOverlayLayout()
         }
     }
 
@@ -78,20 +85,17 @@ class FacilityActivity : BaseActivity<ActivityFacilityBinding>() {
 
         val isPermissionGranted = viewModel.permissionStateChecker(grantResults)
 
-        if (requestCode == PERMISSIONS_ECHO ||
-            requestCode == PERMISSION_DRAW_OVER_OVERLAY
-        ) {
-            if (grantResults.isNotEmpty() && isPermissionGranted
-                && Settings.canDrawOverlays(this)
-            ) {
-                setupService(Actions.START)
-            } else if (!isPermissionGranted) {
-                requestPermission()
-            } else if (!Settings.canDrawOverlays(this)) {
-                openOverlayPermission()
-            } else {
-                finish()
+        if (requestCode == PERMISSIONS_ECHO) {
+            when {
+                grantResults.isNotEmpty() 
+                && isPermissionGranted 
+                && canOverlayLayout() -> setupService(action = Actions.START)
+                isPermissionGranted.not() -> requestPermission()
+                canOverlayLayout().not() -> openOverlayPermission()
+                else -> finish()
             }
         }
     }
+    
+    private fun canOverlayLayout() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) Settings.canDrawOverlays(this) else false 
 }

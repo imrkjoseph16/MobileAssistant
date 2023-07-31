@@ -102,8 +102,8 @@ class EchoService : ServiceViewModel(),
         setupSpeechRecognizer()
         executeListening()
 
-        // Setup Fiber Floating View
-        setupFiberView()
+        // Setup Echo Floating View
+        setupEchoView()
 
         // Checking every 1 hour if the speech listener
         // has being running or stopped.
@@ -158,7 +158,7 @@ class EchoService : ServiceViewModel(),
         return START_STICKY
     }
 
-    private fun setupFiberView() {
+    private fun setupEchoView() {
         val inflater = getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         EchoFloatingView(
@@ -177,7 +177,7 @@ class EchoService : ServiceViewModel(),
         }
 
         val restartServicePendingIntent: PendingIntent = PendingIntent.getService(
-            this, 1, restartServiceIntent, PendingIntent.FLAG_ONE_SHOT)
+            this, 1, restartServiceIntent, PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE)
         applicationContext.getSystemService(Context.ALARM_SERVICE)
         val alarmService: AlarmManager = applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         alarmService.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + 1000, restartServicePendingIntent)
@@ -191,7 +191,7 @@ class EchoService : ServiceViewModel(),
         wakeLock =
             (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
                 newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-                    "FiberService::lock").apply {
+                    "EchoService::lock").apply {
                     acquire()
                 }
             }
@@ -383,7 +383,7 @@ class EchoService : ServiceViewModel(),
         executeListening()
     }
 
-    override fun onFiberClicked() {
+    override fun onEchoClicked() {
         executeListening()
     }
 

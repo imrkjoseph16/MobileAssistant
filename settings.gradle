@@ -14,5 +14,5 @@ dependencyResolutionManagement {
         maven { url "https://jitpack.io" }
     }
 }
-rootProject.name = "FiberMobileAssistant"
+rootProject.name = "EchoMobileAssistant"
 include ':app'
