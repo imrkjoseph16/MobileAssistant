@@ -12,8 +12,9 @@ class FacilityViewModel : BaseViewModel() {
         context: Context?,
         vararg permissions: Array<out String>
     ): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null) {
-
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+            && context != null
+        ) {
             permissions.forEach {
                 if (ContextCompat.checkSelfPermission(context, it.toString()) !=
                     PackageManager.PERMISSION_GRANTED

@@ -17,10 +17,8 @@ abstract class CommandService : RoomDatabase() {
         @Volatile
         private var DB_INSTANCE: CommandService? = null
 
-        fun getInstance(context: Context) : CommandService {
-            return DB_INSTANCE ?: synchronized(this) {
-                DB_INSTANCE ?: buildDatabase(context).also { DB_INSTANCE = it }
-            }
+        fun getInstance(context: Context) = DB_INSTANCE ?: synchronized(this) {
+            DB_INSTANCE ?: buildDatabase(context).also { DB_INSTANCE = it }
         }
 
         private fun buildDatabase(context: Context) : CommandService {

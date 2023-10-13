@@ -18,12 +18,10 @@ class EchoFloatingView(
     var inflater: LayoutInflater,
     var windowManager: WindowManager? = null,
     var speechRecognizer: SpeechRecognizer? = null,
-    var fiberListener: FiberFloatingListener
+    var echoListener: EchoFloatingListener
 ): RecognitionListenerAdapter(), EchoTouchListener.TouchListener {
 
-    private val echoView: WidgetEchoViewBinding by lazy {
-        WidgetEchoViewBinding.inflate(inflater)
-    }
+    private val echoView: WidgetEchoViewBinding by lazy { WidgetEchoViewBinding.inflate(inflater) }
 
     private var FLAG_LAYOUT = 0
 
@@ -40,7 +38,7 @@ class EchoFloatingView(
         FLAG_LAYOUT = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         else WindowManager.LayoutParams.TYPE_PHONE)
 
-        //Add the view to the window.
+        // Add the view to the window.
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -49,13 +47,13 @@ class EchoFloatingView(
             PixelFormat.TRANSLUCENT
         )
 
-        //Specify the chat head position
+        // Specify the chat head position
         params?.gravity = Gravity.CENTER
 
         params?.x = 0
         params?.y = 100
 
-        //Add the view to the window
+        // Add the view to the window
         windowManager?.addView(echoView.root, params)
     }
 
@@ -83,35 +81,35 @@ class EchoFloatingView(
         }
     }
 
-    override fun onReadyForSpeech(params: Bundle?) = fiberListener.onBeginReadySpeech()
+    override fun onReadyForSpeech(params: Bundle?) = echoListener.onBeginReadySpeech()
 
-    override fun onBeginningOfSpeech() = fiberListener.onBeginReadySpeech()
+    override fun onBeginningOfSpeech() = echoListener.onBeginReadySpeech()
 
-    override fun onResults(results: Bundle) = fiberListener.onResults(results)
+    override fun onResults(results: Bundle) = echoListener.onResults(results)
 
-    override fun onError(error: Int) = fiberListener.onError(error)
+    override fun onError(error: Int) = echoListener.onError(error)
 
-    override fun onEndOfSpeech() = fiberListener.onEndOfSpeech()
+    override fun onEndOfSpeech() = echoListener.onEndOfSpeech()
 
-    //Fiber Touch Listener
+    // Echo Touch Listener
     override fun onActionDown(onXParam: (xParam: Int, yParam: Int) -> Unit) = onXParam.invoke(params?.x!!, params?.y!!)
 
-    override fun onActionUp() = fiberListener.onFiberClicked()
+    override fun onActionUp() = echoListener.onEchoClicked()
 
     override fun onActionMove(initialX: Int, initialY: Int) {
-        //Calculate the X and Y coordinates of the view.
+        // Calculate the X and Y coordinates of the view.
         params?.x = initialX
         params?.y = initialY
 
-        //Update the layout with new X & Y coordinate
+        // Update the layout with new X & Y coordinate
         windowManager?.updateViewLayout(echoView.root, params)
     }
 
-    interface FiberFloatingListener {
+    interface EchoFloatingListener {
         fun onBeginReadySpeech()
         fun onError(errorCode: Int)
         fun onResults(results: Bundle)
-        fun onFiberClicked()
+        fun onEchoClicked()
         fun onEndOfSpeech()
     }
 }

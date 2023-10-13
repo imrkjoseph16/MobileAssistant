@@ -3,11 +3,16 @@ package com.imrkjoseph.echomobileassistant.app.common.helper
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.os.AsyncTask
+import android.os.Build
 import android.os.CountDownTimer
 import android.os.PowerManager
 import android.provider.Settings
 import android.speech.SpeechRecognizer
+import androidx.annotation.RequiresApi
 import com.imrkjoseph.echomobileassistant.R
 import com.imrkjoseph.echomobileassistant.app.common.Default
 import com.imrkjoseph.echomobileassistant.app.common.Default.Companion.COUNTDOWN_INTERVAL
@@ -93,45 +98,35 @@ class Utils {
             return ServiceEnum.valueOf(value.toString())
         }
 
-        private fun getPreferences(context: Context): SharedPreferences {
-            return context.getSharedPreferences(name, 0)
-        }
+        private fun getPreferences(context: Context) = context.getSharedPreferences(name, 0)
 
         fun executeDelay(delay: Long, executeDelay: (
             timer: Boolean
-        ) -> Unit) : CountDownTimer {
-            return object : CountDownTimer(delay, COUNTDOWN_INTERVAL) {
-                override fun onFinish() = executeDelay.invoke(true)
-                override fun onTick(millisUntilFinished: Long) { }
-            }
+        ) -> Unit) = object : CountDownTimer(delay, COUNTDOWN_INTERVAL) {
+            override fun onFinish() = executeDelay.invoke(true)
+            override fun onTick(millisUntilFinished: Long) { }
         }
 
-        fun getErrorText(errorCode: Int): String {
-            val message: String = when (errorCode) {
-                SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
-                SpeechRecognizer.ERROR_CLIENT -> "Client side error"
-                SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions"
-                SpeechRecognizer.ERROR_NETWORK -> "Network error"
-                SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
-                SpeechRecognizer.ERROR_NO_MATCH -> "No match"
-                SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "RecognitionService busy"
-                SpeechRecognizer.ERROR_SERVER -> "error from server"
-                SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech input"
-                else -> "Didn't understand, please try again."
-            }
-            return message
+        fun getErrorText(errorCode: Int) = when (errorCode) {
+            SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
+            SpeechRecognizer.ERROR_CLIENT -> "Client side error"
+            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions"
+            SpeechRecognizer.ERROR_NETWORK -> "Network error"
+            SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
+            SpeechRecognizer.ERROR_NO_MATCH -> "No match"
+            SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "RecognitionService busy"
+            SpeechRecognizer.ERROR_SERVER -> "error from server"
+            SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech input"
+            else -> "Didn't understand, please try again."
         }
 
-        fun adjustBrightness(brightness: Float, context: Context) : Boolean {
-            return try {
+        fun adjustBrightness(brightness: Float, context: Context) {
+            context.run {
                 Settings.System.putInt(
                     context.contentResolver,
                     Settings.System.SCREEN_BRIGHTNESS,
                     brightness.toInt()
                 )
-                true
-            } catch (e: Exception) {
-                false
             }
         }
 
@@ -177,12 +172,15 @@ class Utils {
             context: Context,
             smsDescription: String,
             senderName: String
-        ) : String {
-            return String.format(
-                context.getString(R.string.param_speak_message),
-                smsDescription,
-                senderName
-            )
-        }
+        ) = String.format(
+            context.getString(R.string.param_speak_message),
+            smsDescription,
+            senderName
+        )
+
+        fun audioAttributes() = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_MEDIA)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+        .build()
     }
 }
